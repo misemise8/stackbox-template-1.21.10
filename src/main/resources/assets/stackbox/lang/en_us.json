@@ -1,0 +1,10 @@
+{
+    "item.stackbox.stack_box": "Stack Box",
+    "item.stackbox.stack_box.empty": "Empty",
+    "item.stackbox.stack_box.stored": "Stored: %s x%d",
+    "item.stackbox.stack_box.capacity": "%d / %d",
+    "container.stackbox.stack_box": "Stack Box",
+    "gui.stackbox.deposit_all": "Deposit All",
+    "gui.stackbox.withdraw_stack": "Withdraw 64",
+    "gui.stackbox.fill_inventory": "Fill Inventory"
+}
