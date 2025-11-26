@@ -11,15 +11,10 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.Identifier;
 import net.misemise.item.StackBoxItem;
 
-/**
- * Screen handler for the Stack Box GUI.
- * Manages the inventory slots, player interaction, and button actions.
- */
 public class StackBoxScreenHandler extends ScreenHandler {
     private final Inventory inventory;
     private final ItemStack stackBoxStack;
 
-    // Button action IDs
     public static final int BUTTON_DEPOSIT_ALL = 0;
     public static final int BUTTON_WITHDRAW_STACK = 1;
     public static final int BUTTON_FILL_INVENTORY = 2;
@@ -33,30 +28,24 @@ public class StackBoxScreenHandler extends ScreenHandler {
         this.stackBoxStack = stackBoxStack;
         this.inventory = new SimpleInventory(1);
 
-        // Load stored item into the slot
         loadStoredItem();
 
-        // Add the single storage slot (centered at x=80)
+        // Add the single storage slot (centered at top)
         this.addSlot(new SingleItemSlot(inventory, 0, 80, 20, stackBoxStack));
 
-        // Add player inventory slots
-        int i;
-        // Player inventory (3 rows of 9)
-        for (i = 0; i < 3; ++i) {
-            for (int j = 0; j < 9; ++j) {
-                this.addSlot(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 51 + i * 18));
+        // Add player inventory slots (3 rows of 9)
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 9; ++col) {
+                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
             }
         }
 
-        // Player hotbar
-        for (i = 0; i < 9; ++i) {
-            this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 109));
+        // Add player hotbar (1 row of 9)
+        for (int col = 0; col < 9; ++col) {
+            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 142));
         }
     }
 
-    /**
-     * Load the stored item from NBT into the inventory slot
-     */
     private void loadStoredItem() {
         if (!stackBoxStack.isEmpty()) {
             String itemId = StackBoxItem.getStoredItemId(stackBoxStack);
@@ -70,9 +59,6 @@ public class StackBoxScreenHandler extends ScreenHandler {
         }
     }
 
-    /**
-     * Save the current slot item back to NBT
-     */
     private void saveStoredItem() {
         if (!stackBoxStack.isEmpty()) {
             ItemStack slotStack = inventory.getStack(0);
@@ -80,10 +66,8 @@ public class StackBoxScreenHandler extends ScreenHandler {
             int currentCount = StackBoxItem.getStoredCount(stackBoxStack);
 
             if (slotStack.isEmpty() && currentCount == 0) {
-                // Clear storage
                 StackBoxItem.setStoredItem(stackBoxStack, "", 0);
             } else if (!slotStack.isEmpty()) {
-                // Ensure the item ID is saved
                 String itemId = Registries.ITEM.getId(slotStack.getItem()).toString();
                 if (currentItemId.isEmpty()) {
                     StackBoxItem.setStoredItem(stackBoxStack, itemId, 0);
@@ -113,10 +97,8 @@ public class StackBoxScreenHandler extends ScreenHandler {
             newStack = slotStack.copy();
 
             if (slot == 0) {
-                // Moving from storage slot to player inventory - not allowed for shift-click
                 return ItemStack.EMPTY;
             } else {
-                // Moving from player inventory to storage slot
                 if (!this.insertItem(slotStack, 0, 1, false)) {
                     return ItemStack.EMPTY;
                 }
@@ -150,20 +132,16 @@ public class StackBoxScreenHandler extends ScreenHandler {
         }
     }
 
-    /**
-     * Deposit all matching items from player inventory into the Stack Box
-     */
     private boolean handleDepositAll(PlayerEntity player) {
         String storedItemId = StackBoxItem.getStoredItemId(stackBoxStack);
 
-        // If no item is stored yet, check the slot
         if (storedItemId.isEmpty()) {
             ItemStack slotStack = inventory.getStack(0);
             if (!slotStack.isEmpty()) {
                 storedItemId = Registries.ITEM.getId(slotStack.getItem()).toString();
                 StackBoxItem.setStoredItem(stackBoxStack, storedItemId, 0);
             } else {
-                return false; // Nothing to deposit
+                return false;
             }
         }
 
@@ -174,7 +152,6 @@ public class StackBoxScreenHandler extends ScreenHandler {
 
         int totalDeposited = 0;
 
-        // Iterate through player inventory (skip the storage slot at index 0)
         for (int i = 1; i < this.slots.size(); i++) {
             Slot slot = this.slots.get(i);
             ItemStack stack = slot.getStack();
@@ -191,7 +168,6 @@ public class StackBoxScreenHandler extends ScreenHandler {
                 }
 
                 if (overflow > 0) {
-                    // Stack Box is full
                     break;
                 }
             }
@@ -200,9 +176,6 @@ public class StackBoxScreenHandler extends ScreenHandler {
         return totalDeposited > 0;
     }
 
-    /**
-     * Withdraw one stack (64 items) from the Stack Box
-     */
     private boolean handleWithdrawStack(PlayerEntity player) {
         String storedItemId = StackBoxItem.getStoredItemId(stackBoxStack);
         if (storedItemId.isEmpty()) {
@@ -221,12 +194,10 @@ public class StackBoxScreenHandler extends ScreenHandler {
 
         ItemStack withdrawStack = new ItemStack(Registries.ITEM.get(id), toWithdraw);
 
-        // Try to add to player inventory
         if (player.getInventory().insertStack(withdrawStack)) {
             StackBoxItem.removeItems(stackBoxStack, toWithdraw);
             return true;
         } else if (withdrawStack.getCount() < toWithdraw) {
-            // Partially added
             int actuallyWithdrawn = toWithdraw - withdrawStack.getCount();
             StackBoxItem.removeItems(stackBoxStack, actuallyWithdrawn);
             return true;
@@ -235,9 +206,6 @@ public class StackBoxScreenHandler extends ScreenHandler {
         return false;
     }
 
-    /**
-     * Fill player inventory with items from the Stack Box
-     */
     private boolean handleFillInventory(PlayerEntity player) {
         String storedItemId = StackBoxItem.getStoredItemId(stackBoxStack);
         if (storedItemId.isEmpty()) {
@@ -252,7 +220,7 @@ public class StackBoxScreenHandler extends ScreenHandler {
         int totalWithdrawn = 0;
         int maxStackSize = Registries.ITEM.get(id).getMaxCount();
 
-        // First, top off existing stacks
+        // Top off existing stacks
         for (int i = 1; i < this.slots.size(); i++) {
             Slot slot = this.slots.get(i);
             ItemStack stack = slot.getStack();
@@ -274,7 +242,7 @@ public class StackBoxScreenHandler extends ScreenHandler {
             }
         }
 
-        // Then, fill empty slots
+        // Fill empty slots
         for (int i = 1; i < this.slots.size(); i++) {
             Slot slot = this.slots.get(i);
             ItemStack stack = slot.getStack();
@@ -296,16 +264,10 @@ public class StackBoxScreenHandler extends ScreenHandler {
         return totalWithdrawn > 0;
     }
 
-    /**
-     * Get the stored item count for display
-     */
     public int getStoredCount() {
         return stackBoxStack.isEmpty() ? 0 : StackBoxItem.getStoredCount(stackBoxStack);
     }
 
-    /**
-     * Get the stored item ID for display
-     */
     public String getStoredItemId() {
         return stackBoxStack.isEmpty() ? "" : StackBoxItem.getStoredItemId(stackBoxStack);
     }
