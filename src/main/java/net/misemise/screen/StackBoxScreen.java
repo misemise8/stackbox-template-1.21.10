@@ -94,14 +94,26 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
         int count = this.handler.getStoredCount();
         String itemId = this.handler.getStoredItemId();
 
-        if (!itemId.isEmpty() && count > 0) {
+        if (!itemId.isEmpty()) {
             String countText = formatCount(count);
             int textX = this.x + this.backgroundWidth / 2;
-            int textY = this.y + 6;
+            int textY = this.y + 40;
 
             // Draw centered text with shadow
             int textWidth = this.textRenderer.getWidth(countText);
-            context.drawText(this.textRenderer, countText, textX - textWidth / 2, textY, 0x404040, false);
+            context.drawText(this.textRenderer, countText, textX - textWidth / 2, textY, 0xFFFFFF, true);
+
+            // Draw label above count
+            Text label = Text.literal("Stored:");
+            int labelWidth = this.textRenderer.getWidth(label);
+            context.drawText(this.textRenderer, label, textX - labelWidth / 2, textY - 10, 0xFFFFFF, true);
+        } else {
+            // Draw "Empty" text
+            Text emptyText = Text.literal("Empty");
+            int textX = this.x + this.backgroundWidth / 2;
+            int textY = this.y + 35;
+            int textWidth = this.textRenderer.getWidth(emptyText);
+            context.drawText(this.textRenderer, emptyText, textX - textWidth / 2, textY, 0x808080, true);
         }
     }
 

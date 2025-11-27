@@ -97,17 +97,35 @@ public class StackBoxScreenHandler extends ScreenHandler {
             newStack = slotStack.copy();
 
             if (slot == 0) {
+                // Moving from storage slot - not allowed
                 return ItemStack.EMPTY;
             } else {
-                if (!this.insertItem(slotStack, 0, 1, false)) {
-                    return ItemStack.EMPTY;
-                }
-            }
+                // Moving from player inventory to storage
+                String itemId = Registries.ITEM.getId(slotStack.getItem()).toString();
+                int count = slotStack.getCount();
 
-            if (slotStack.isEmpty()) {
-                clickedSlot.setStack(ItemStack.EMPTY);
-            } else {
-                clickedSlot.markDirty();
+                // Try to add to Stack Box
+                int overflow = StackBoxItem.addItems(stackBoxStack, itemId, count);
+
+                if (overflow < count) {
+                    // Some items were added
+                    if (overflow > 0) {
+                        slotStack.setCount(overflow);
+                    } else {
+                        slotStack.setCount(0);
+                    }
+
+                    // Update display item in slot 0
+                    ItemStack displayStack = inventory.getStack(0);
+                    if (displayStack.isEmpty()) {
+                        inventory.setStack(0, new ItemStack(slotStack.getItem(), 1));
+                    }
+
+                    clickedSlot.markDirty();
+                    return newStack;
+                }
+
+                return ItemStack.EMPTY;
             }
         }
 

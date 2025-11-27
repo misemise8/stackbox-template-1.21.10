@@ -89,7 +89,7 @@ public class StackBoxItem extends Item {
 
     public static void setStoredItem(ItemStack stack, String itemId, int count) {
         NbtCompound nbt = getOrCreateNbt(stack);
-        if (count > 0) {
+        if (count > 0 || !itemId.isEmpty()) {
             nbt.putString(STORED_ITEM_KEY, itemId);
             nbt.putInt(STORED_COUNT_KEY, count);
         } else {
