@@ -19,10 +19,6 @@ import net.misemise.screen.StackBoxScreenHandler;
 
 import java.util.List;
 
-/**
- * Stack Box Item - A backpack-like item that can store large quantities of a
- * single item type.
- */
 public class StackBoxItem extends Item {
     public static final int MAX_CAPACITY = 1_000_000;
 
@@ -31,6 +27,20 @@ public class StackBoxItem extends Item {
 
     public StackBoxItem(Settings settings) {
         super(settings);
+    }
+
+    @Override
+    public ActionResult use(World world, PlayerEntity user, Hand hand) {
+        ItemStack stack = user.getStackInHand(hand);
+
+        if (!world.isClient()) {
+            user.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+                    (syncId, playerInventory, player) -> new StackBoxScreenHandler(syncId, playerInventory, stack),
+                    Text.translatable("container.stackbox.stack_box")));
+        }
+
+        return ActionResult.SUCCESS;
+    }
 
     public void appendTooltip(ItemStack stack, Item.TooltipContext context, List<Text> tooltip, TooltipType type) {
         NbtCompound nbt = getOrCreateNbt(stack);
@@ -119,5 +129,19 @@ public class StackBoxItem extends Item {
         setStoredItem(stack, itemId, remaining);
 
         return toRemove;
+    }
+
+    public static boolean isAutoCollectEnabled(ItemStack stack) {
+        NbtCompound nbt = getOrCreateNbt(stack);
+        if (!nbt.contains("AutoCollect")) {
+            return true;
+        }
+        return nbt.getBoolean("AutoCollect").orElse(true);
+    }
+
+    public static void setAutoCollect(ItemStack stack, boolean enabled) {
+        NbtCompound nbt = getOrCreateNbt(stack);
+        nbt.putBoolean("AutoCollect", enabled);
+        saveNbt(stack, nbt);
     }
 }

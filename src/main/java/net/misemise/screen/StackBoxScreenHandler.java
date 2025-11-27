@@ -4,6 +4,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.PropertyDelegate;
@@ -20,21 +21,71 @@ public class StackBoxScreenHandler extends ScreenHandler {
     public static final int BUTTON_DEPOSIT_ALL = 0;
     public static final int BUTTON_WITHDRAW_STACK = 1;
     public static final int BUTTON_FILL_INVENTORY = 2;
+    public static final int BUTTON_TOGGLE_AUTO_COLLECT = 3;
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory) {
-        this(syncId, playerInventory, ItemStack.EMPTY, new net.minecraft.screen.ArrayPropertyDelegate(1));
+        this(syncId, playerInventory, ItemStack.EMPTY);
     }
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack stackBoxStack) {
-        this(syncId, playerInventory, stackBoxStack, new net.minecraft.screen.ArrayPropertyDelegate(1));
-    }
-
-    public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack stackBoxStack,
-            PropertyDelegate propertyDelegate) {
         super(ModScreenHandlers.STACK_BOX_SCREEN_HANDLER, syncId);
         this.stackBoxStack = stackBoxStack;
         this.inventory = new SimpleInventory(1);
-        this.propertyDelegate = propertyDelegate;
+
+        // Custom PropertyDelegate to handle sync
+        this.propertyDelegate = new PropertyDelegate() {
+            private int clientCachedCount = 0;
+            private int clientCachedItemId = 0;
+            private int clientCachedAutoCollect = 1; // 1 = enabled by default
+
+            @Override
+            public int get(int index) {
+                if (index == 0) {
+                    // Count
+                    if (!stackBoxStack.isEmpty()) {
+                        return StackBoxItem.getStoredCount(stackBoxStack);
+                    }
+                    return clientCachedCount;
+                } else if (index == 1) {
+                    // Item ID (Raw)
+                    if (!stackBoxStack.isEmpty()) {
+                        String itemId = StackBoxItem.getStoredItemId(stackBoxStack);
+                        if (!itemId.isEmpty()) {
+                            Identifier id = Identifier.tryParse(itemId);
+                            if (id != null && Registries.ITEM.containsId(id)) {
+                                return Registries.ITEM.getRawId(Registries.ITEM.get(id));
+                            }
+                        }
+                        return 0; // Air or invalid
+                    }
+                    return clientCachedItemId;
+                } else if (index == 2) {
+                    // Auto-collect enabled (0 or 1)
+                    if (!stackBoxStack.isEmpty()) {
+                        return StackBoxItem.isAutoCollectEnabled(stackBoxStack) ? 1 : 0;
+                    }
+                    return clientCachedAutoCollect;
+                }
+                return 0;
+            }
+
+            @Override
+            public void set(int index, int value) {
+                if (index == 0) {
+                    clientCachedCount = value;
+                } else if (index == 1) {
+                    clientCachedItemId = value;
+                } else if (index == 2) {
+                    clientCachedAutoCollect = value;
+                }
+            }
+
+            @Override
+            public int size() {
+                return 3;
+            }
+        };
+
         this.addProperties(propertyDelegate);
 
         loadStoredItem();
@@ -154,6 +205,8 @@ public class StackBoxScreenHandler extends ScreenHandler {
                 return handleWithdrawStack(player);
             case BUTTON_FILL_INVENTORY:
                 return handleFillInventory(player);
+            case BUTTON_TOGGLE_AUTO_COLLECT:
+                return handleToggleAutoCollect(player);
             default:
                 return false;
         }
@@ -214,19 +267,30 @@ public class StackBoxScreenHandler extends ScreenHandler {
             return false;
         }
 
-        int toWithdraw = Math.min(64, StackBoxItem.getStoredCount(stackBoxStack));
+        int maxStackSize = Registries.ITEM.get(id).getMaxCount();
+        int toWithdraw = Math.min(maxStackSize, StackBoxItem.getStoredCount(stackBoxStack));
+
         if (toWithdraw == 0) {
             return false;
         }
 
         ItemStack withdrawStack = new ItemStack(Registries.ITEM.get(id), toWithdraw);
+        int originalCount = withdrawStack.getCount();
 
-        if (player.getInventory().insertStack(withdrawStack)) {
-            StackBoxItem.removeItems(stackBoxStack, toWithdraw);
-            return true;
-        } else if (withdrawStack.getCount() < toWithdraw) {
-            int actuallyWithdrawn = toWithdraw - withdrawStack.getCount();
-            StackBoxItem.removeItems(stackBoxStack, actuallyWithdrawn);
+        // Try to insert into player inventory
+        // insertStack modifies the passed stack, reducing its count by the amount
+        // inserted
+        player.getInventory().insertStack(withdrawStack);
+
+        // Explicitly mark inventory dirty to ensure client update
+        player.getInventory().markDirty();
+
+        // Calculate how many were actually inserted
+        int remaining = withdrawStack.getCount();
+        int inserted = originalCount - remaining;
+
+        if (inserted > 0) {
+            StackBoxItem.removeItems(stackBoxStack, inserted);
             return true;
         }
 
@@ -244,15 +308,16 @@ public class StackBoxScreenHandler extends ScreenHandler {
             return false;
         }
 
-        int totalWithdrawn = 0;
-        int maxStackSize = Registries.ITEM.get(id).getMaxCount();
+        Item item = Registries.ITEM.get(id);
+        int maxStackSize = item.getMaxCount();
+        boolean changed = false;
 
-        // Top off existing stacks
+        // 1. Top off existing stacks
         for (int i = 1; i < this.slots.size(); i++) {
             Slot slot = this.slots.get(i);
             ItemStack stack = slot.getStack();
 
-            if (!stack.isEmpty() && Registries.ITEM.getId(stack.getItem()).equals(id)) {
+            if (!stack.isEmpty() && stack.getItem() == item) {
                 int currentCount = stack.getCount();
                 if (currentCount < maxStackSize) {
                     int needed = maxStackSize - currentCount;
@@ -262,13 +327,42 @@ public class StackBoxScreenHandler extends ScreenHandler {
                     if (toAdd > 0) {
                         stack.increment(toAdd);
                         StackBoxItem.removeItems(stackBoxStack, toAdd);
-                        totalWithdrawn += toAdd;
+                        slot.markDirty();
+                        changed = true;
                     }
                 }
             }
         }
 
-        return totalWithdrawn > 0;
+        // 2. Fill empty slots
+        for (int i = 1; i < this.slots.size(); i++) {
+            Slot slot = this.slots.get(i);
+            if (!slot.hasStack()) {
+                int available = StackBoxItem.getStoredCount(stackBoxStack);
+                if (available == 0) {
+                    break;
+                }
+
+                int toAdd = Math.min(maxStackSize, available);
+                ItemStack newStack = new ItemStack(item, toAdd);
+                slot.setStack(newStack);
+                StackBoxItem.removeItems(stackBoxStack, toAdd);
+                slot.markDirty();
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private boolean handleToggleAutoCollect(PlayerEntity player) {
+        if (stackBoxStack.isEmpty()) {
+            return false;
+        }
+
+        boolean currentState = StackBoxItem.isAutoCollectEnabled(stackBoxStack);
+        StackBoxItem.setAutoCollect(stackBoxStack, !currentState);
+        return true;
     }
 
     public int getStoredCount() {
@@ -276,6 +370,19 @@ public class StackBoxScreenHandler extends ScreenHandler {
     }
 
     public String getStoredItemId() {
-        return StackBoxItem.getStoredItemId(stackBoxStack);
+        if (!stackBoxStack.isEmpty()) {
+            return StackBoxItem.getStoredItemId(stackBoxStack);
+        }
+        // Fallback for client using synced ID
+        int rawId = this.propertyDelegate.get(1);
+        if (rawId != 0) {
+            return Registries.ITEM.getId(Registries.ITEM.get(rawId)).toString();
+        }
+        return "";
     }
+
+    public boolean getAutoCollectEnabled() {
+        return this.propertyDelegate.get(2) == 1;
+    }
+
 }

@@ -38,13 +38,14 @@ public abstract class ItemEntityMixin extends Entity {
         if (pickedStack.isEmpty())
             return;
 
-        boolean changed = false;
-
         // Iterate through player's inventory to find StackBoxes
         for (int i = 0; i < player.getInventory().size(); i++) {
             ItemStack inventoryStack = player.getInventory().getStack(i);
 
             if (inventoryStack.getItem() instanceof StackBoxItem) {
+                if (!StackBoxItem.isAutoCollectEnabled(inventoryStack)) {
+                    continue;
+                }
                 String storedId = StackBoxItem.getStoredItemId(inventoryStack);
                 String pickedId = Registries.ITEM.getId(pickedStack.getItem()).toString();
 
@@ -55,7 +56,6 @@ public abstract class ItemEntityMixin extends Entity {
                     if (overflow != countToAdd) {
                         // Items were added
                         pickedStack.setCount(overflow);
-                        changed = true;
 
                         // Play pickup sound
                         player.getEntityWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
