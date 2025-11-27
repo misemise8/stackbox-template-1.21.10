@@ -6,6 +6,7 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
+import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.Identifier;
@@ -14,19 +15,27 @@ import net.misemise.item.StackBoxItem;
 public class StackBoxScreenHandler extends ScreenHandler {
     private final Inventory inventory;
     private final ItemStack stackBoxStack;
+    private final PropertyDelegate propertyDelegate;
 
     public static final int BUTTON_DEPOSIT_ALL = 0;
     public static final int BUTTON_WITHDRAW_STACK = 1;
     public static final int BUTTON_FILL_INVENTORY = 2;
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory) {
-        this(syncId, playerInventory, ItemStack.EMPTY);
+        this(syncId, playerInventory, ItemStack.EMPTY, new net.minecraft.screen.ArrayPropertyDelegate(1));
     }
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack stackBoxStack) {
+        this(syncId, playerInventory, stackBoxStack, new net.minecraft.screen.ArrayPropertyDelegate(1));
+    }
+
+    public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack stackBoxStack,
+            PropertyDelegate propertyDelegate) {
         super(ModScreenHandlers.STACK_BOX_SCREEN_HANDLER, syncId);
         this.stackBoxStack = stackBoxStack;
         this.inventory = new SimpleInventory(1);
+        this.propertyDelegate = propertyDelegate;
+        this.addProperties(propertyDelegate);
 
         loadStoredItem();
 
@@ -254,27 +263,7 @@ public class StackBoxScreenHandler extends ScreenHandler {
                         stack.increment(toAdd);
                         StackBoxItem.removeItems(stackBoxStack, toAdd);
                         totalWithdrawn += toAdd;
-                        slot.markDirty();
                     }
-                }
-            }
-        }
-
-        // Fill empty slots
-        for (int i = 1; i < this.slots.size(); i++) {
-            Slot slot = this.slots.get(i);
-            ItemStack stack = slot.getStack();
-
-            if (stack.isEmpty()) {
-                int available = StackBoxItem.getStoredCount(stackBoxStack);
-                int toAdd = Math.min(maxStackSize, available);
-
-                if (toAdd > 0) {
-                    ItemStack newStack = new ItemStack(Registries.ITEM.get(id), toAdd);
-                    slot.setStack(newStack);
-                    StackBoxItem.removeItems(stackBoxStack, toAdd);
-                    totalWithdrawn += toAdd;
-                    slot.markDirty();
                 }
             }
         }
@@ -283,10 +272,10 @@ public class StackBoxScreenHandler extends ScreenHandler {
     }
 
     public int getStoredCount() {
-        return stackBoxStack.isEmpty() ? 0 : StackBoxItem.getStoredCount(stackBoxStack);
+        return this.propertyDelegate.get(0);
     }
 
     public String getStoredItemId() {
-        return stackBoxStack.isEmpty() ? "" : StackBoxItem.getStoredItemId(stackBoxStack);
+        return StackBoxItem.getStoredItemId(stackBoxStack);
     }
 }

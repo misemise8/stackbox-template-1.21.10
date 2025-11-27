@@ -29,37 +29,37 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
 
         // Button 1: Deposit All (left)
         this.addDrawableChild(ButtonWidget.builder(
-                        Text.translatable("gui.stackbox.deposit_all"),
-                        button -> {
-                            if (this.client != null && this.client.interactionManager != null) {
-                                this.client.interactionManager.clickButton(this.handler.syncId,
-                                        StackBoxScreenHandler.BUTTON_DEPOSIT_ALL);
-                            }
-                        })
+                Text.translatable("gui.stackbox.deposit_all"),
+                button -> {
+                    if (this.client != null && this.client.interactionManager != null) {
+                        this.client.interactionManager.clickButton(this.handler.syncId,
+                                StackBoxScreenHandler.BUTTON_DEPOSIT_ALL);
+                    }
+                })
                 .dimensions(this.x + 8, buttonY, buttonWidth, buttonHeight)
                 .build());
 
         // Button 2: Withdraw 64 (center)
         this.addDrawableChild(ButtonWidget.builder(
-                        Text.translatable("gui.stackbox.withdraw_stack"),
-                        button -> {
-                            if (this.client != null && this.client.interactionManager != null) {
-                                this.client.interactionManager.clickButton(this.handler.syncId,
-                                        StackBoxScreenHandler.BUTTON_WITHDRAW_STACK);
-                            }
-                        })
+                Text.translatable("gui.stackbox.withdraw_stack"),
+                button -> {
+                    if (this.client != null && this.client.interactionManager != null) {
+                        this.client.interactionManager.clickButton(this.handler.syncId,
+                                StackBoxScreenHandler.BUTTON_WITHDRAW_STACK);
+                    }
+                })
                 .dimensions(this.x + 62, buttonY, buttonWidth, buttonHeight)
                 .build());
 
         // Button 3: Fill Inventory (right)
         this.addDrawableChild(ButtonWidget.builder(
-                        Text.translatable("gui.stackbox.fill_inventory"),
-                        button -> {
-                            if (this.client != null && this.client.interactionManager != null) {
-                                this.client.interactionManager.clickButton(this.handler.syncId,
-                                        StackBoxScreenHandler.BUTTON_FILL_INVENTORY);
-                            }
-                        })
+                Text.translatable("gui.stackbox.fill_inventory"),
+                button -> {
+                    if (this.client != null && this.client.interactionManager != null) {
+                        this.client.interactionManager.clickButton(this.handler.syncId,
+                                StackBoxScreenHandler.BUTTON_FILL_INVENTORY);
+                    }
+                })
                 .dimensions(this.x + 116, buttonY, buttonWidth, buttonHeight)
                 .build());
     }
@@ -80,41 +80,26 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
                 this.backgroundWidth,
                 this.backgroundHeight,
                 TEXTURE_WIDTH,
-                TEXTURE_HEIGHT
-        );
+                TEXTURE_HEIGHT);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
-        this.drawMouseoverTooltip(context, mouseX, mouseY);
 
-        // Draw stored item count
+        // Draw Total Item count
         int count = this.handler.getStoredCount();
-        String itemId = this.handler.getStoredItemId();
+        String countText = "Total Item: " + formatCount(count);
 
-        if (!itemId.isEmpty()) {
-            String countText = formatCount(count);
-            int textX = this.x + this.backgroundWidth / 2;
-            int textY = this.y + 40;
+        int textX = this.x + this.backgroundWidth / 2;
+        int textY = this.y + 40; // Between slot (ends at 38) and buttons (start at 50)
 
-            // Draw centered text with shadow
-            int textWidth = this.textRenderer.getWidth(countText);
-            context.drawText(this.textRenderer, countText, textX - textWidth / 2, textY, 0xFFFFFF, true);
+        // Draw centered text without shadow (dark grey to match labels)
+        int textWidth = this.textRenderer.getWidth(countText);
+        context.drawText(this.textRenderer, countText, textX - textWidth / 2, textY, 0xFF404040, false);
 
-            // Draw label above count
-            Text label = Text.literal("Stored:");
-            int labelWidth = this.textRenderer.getWidth(label);
-            context.drawText(this.textRenderer, label, textX - labelWidth / 2, textY - 10, 0xFFFFFF, true);
-        } else {
-            // Draw "Empty" text
-            Text emptyText = Text.literal("Empty");
-            int textX = this.x + this.backgroundWidth / 2;
-            int textY = this.y + 35;
-            int textWidth = this.textRenderer.getWidth(emptyText);
-            context.drawText(this.textRenderer, emptyText, textX - textWidth / 2, textY, 0x808080, true);
-        }
+        this.drawMouseoverTooltip(context, mouseX, mouseY);
     }
 
     private String formatCount(int count) {

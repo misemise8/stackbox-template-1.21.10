@@ -31,20 +31,6 @@ public class StackBoxItem extends Item {
 
     public StackBoxItem(Settings settings) {
         super(settings);
-    }
-
-    @Override
-    public ActionResult use(World world, PlayerEntity user, Hand hand) {
-        ItemStack stack = user.getStackInHand(hand);
-
-        if (!world.isClient()) {
-            user.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                    (syncId, playerInventory, player) -> new StackBoxScreenHandler(syncId, playerInventory, stack),
-                    Text.translatable("container.stackbox.stack_box")));
-        }
-
-        return ActionResult.SUCCESS;
-    }
 
     public void appendTooltip(ItemStack stack, Item.TooltipContext context, List<Text> tooltip, TooltipType type) {
         NbtCompound nbt = getOrCreateNbt(stack);
