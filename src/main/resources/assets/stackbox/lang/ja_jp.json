@@ -4,7 +4,7 @@
     "item.stackbox.stack_box.stored": "保存中: %s x%d",
     "item.stackbox.stack_box.capacity": "%d / %d",
     "container.stackbox.stack_box": "スタックボックス",
-    "gui.stackbox.deposit_all": "全て入れる",
-    "gui.stackbox.withdraw_stack": "64個取り出す",
-    "gui.stackbox.fill_inventory": "満タンまで取り出す"
+    "gui.stackbox.deposit_all": "全て",
+    "gui.stackbox.withdraw_stack": "64個",
+    "gui.stackbox.fill_inventory": "補充"
 }

@@ -26,6 +26,7 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
     protected void init() {
         super.init();
 
+        // Uniform button size for all buttons
         int buttonWidth = 52;
         int buttonHeight = 20;
         int buttonY = this.y + 50;
@@ -66,11 +67,9 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
                 .dimensions(this.x + 116, buttonY, buttonWidth, buttonHeight)
                 .build());
 
-        // Button 4: Auto-Collect Toggle (next to item slot)
-        int toggleButtonWidth = 35;
-        int toggleButtonHeight = 16;
-        int toggleButtonX = this.x + 110; // Next to the item slot
-        int toggleButtonY = this.y + 20; // Same height as item slot
+        // Button 4: Auto-Collect Toggle (next to item slot, same size as others)
+        int toggleButtonX = this.x + 110;
+        int toggleButtonY = this.y + 20;
         this.autoCollectButton = this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(this.handler.getAutoCollectEnabled() ? "Auto: ON" : "Auto: OFF"),
                 button -> {
@@ -79,7 +78,7 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
                                 StackBoxScreenHandler.BUTTON_TOGGLE_AUTO_COLLECT);
                     }
                 })
-                .dimensions(toggleButtonX, toggleButtonY, toggleButtonWidth, toggleButtonHeight)
+                .dimensions(toggleButtonX, toggleButtonY, buttonWidth, buttonHeight)
                 .build());
     }
 

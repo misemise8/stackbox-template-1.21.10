@@ -4,7 +4,7 @@
     "item.stackbox.stack_box.stored": "Stored: %s x%d",
     "item.stackbox.stack_box.capacity": "%d / %d",
     "container.stackbox.stack_box": "Stack Box",
-    "gui.stackbox.deposit_all": "Deposit All",
-    "gui.stackbox.withdraw_stack": "Withdraw 64",
-    "gui.stackbox.fill_inventory": "Fill Inventory"
+    "gui.stackbox.deposit_all": "Deposit",
+    "gui.stackbox.withdraw_stack": "Withdraw",
+    "gui.stackbox.fill_inventory": "Fill Inv"
 }
