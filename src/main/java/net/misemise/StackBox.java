@@ -18,6 +18,9 @@ public class StackBox implements ModInitializer {
 		// Initialize screen handlers
 		net.misemise.screen.ModScreenHandlers.initialize();
 
+		// Initialize networking
+		net.misemise.network.ModMessages.registerC2SPackets();
+
 		LOGGER.info("Stack Box mod initialized!");
 	}
 }
