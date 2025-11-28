@@ -5,79 +5,60 @@ size = 16
 img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
 draw = ImageDraw.Draw(img)
 
-# Vanilla chest-style cardboard box colors
-wood_top = (218, 178, 130, 255)
-wood_front = (190, 150, 102, 255)
-wood_side = (164, 128, 86, 255)
-wood_dark = (138, 106, 70, 255)
-wood_shadow = (112, 84, 54, 255)
-outline = (88, 66, 42, 255)
-lock_gold = (255, 220, 120, 255)
-lock_dark = (180, 140, 60, 255)
+# Box colors inspired by the uploaded image - simple brown/tan box
+box_top = (220, 180, 130, 255)
+box_front = (190, 150, 100, 255)
+box_side = (160, 120, 80, 255)
+box_dark = (130, 90, 60, 255)
+outline = (80, 60, 40, 255)
+infinity_gold = (255, 220, 100, 255)
+infinity_shadow = (200, 160, 60, 255)
 
-# Draw chest-like box (centered and taller)
-# Top face (visible from front)
-draw.polygon([(4, 3), (12, 3), (13, 2), (3, 2)], fill=wood_top)
-draw.line([(3, 2), (13, 2)], fill=outline)
-draw.line([(13, 2), (12, 3)], fill=outline)
-draw.line([(3, 2), (4, 3)], fill=outline)
+# Draw 3D box similar to uploaded image
+# Top face
+draw.polygon([(5, 4), (11, 4), (13, 2), (3, 2)], fill=box_top)
+draw.line([(3, 2), (13, 2), (11, 4), (5, 4), (3, 2)], fill=outline)
 
-# Main front face (taller)
-draw.rectangle([4, 3, 12, 13], fill=wood_front)
+# Front face
+draw.rectangle([5, 4, 11, 12], fill=box_front)
+draw.rectangle([5, 4, 11, 12], outline=outline)
 
-# Left side edge
-draw.polygon([(3, 2), (4, 3), (4, 13), (3, 14)], fill=wood_side)
+# Left side
+draw.polygon([(3, 2), (5, 4), (5, 12), (3, 14)], fill=box_side)
+draw.line([(3, 2), (5, 4), (5, 12), (3, 14), (3, 2)], fill=outline)
 
-# Right side edge
-draw.polygon([(13, 2), (12, 3), (12, 13), (13, 14)], fill=wood_dark)
+# Right side
+draw.polygon([(11, 4), (13, 2), (13, 14), (11, 12)], fill=box_dark)
+draw.line([(11, 4), (13, 2), (13, 14), (11, 12), (11, 4)], fill=outline)
 
-# Bottom
-draw.polygon([(3, 14), (4, 13), (12, 13), (13, 14)], fill=wood_shadow)
-
-# Outline the box
-draw.rectangle([4, 3, 12, 13], outline=outline)
-draw.line([(3, 2), (3, 14)], fill=outline)
-draw.line([(13, 2), (13, 14)], fill=outline)
+# Bottom edge
 draw.line([(3, 14), (13, 14)], fill=outline)
 
-# Add wood planks texture (horizontal lines like chest)
-for y in [5, 7, 9, 11]:
-    draw.line([(5, y), (11, y)], fill=wood_dark)
-    draw.line([(5, y+1), (11, y+1)], fill=(200, 160, 112, 255))
+# Draw infinity symbol (∞) on the front face
+# Simple pixel-art infinity symbol
+# Left loop
+draw.point((6, 7), fill=infinity_gold)
+draw.point((7, 6), fill=infinity_gold)
+draw.point((7, 8), fill=infinity_gold)
+draw.point((6, 9), fill=infinity_gold)
 
-# Add vertical wood detail
-draw.line([(8, 4), (8, 12)], fill=wood_dark)
+# Center connection
+draw.point((8, 7), fill=infinity_gold)
+draw.point((8, 8), fill=infinity_gold)
 
-# Lock/Clasp in the center (like chest latch)
-# Lock base
-draw.rectangle([7, 7, 9, 9], fill=lock_dark)
-draw.rectangle([7, 7, 8, 8], fill=lock_gold)
+# Right loop
+draw.point((9, 6), fill=infinity_gold)
+draw.point((9, 8), fill=infinity_gold)
+draw.point((10, 7), fill=infinity_gold)
+draw.point((10, 9), fill=infinity_gold)
 
-# Lock highlight
-img.putpixel((7, 7), (255, 240, 150, 255))
-
-# Add corner details
-img.putpixel((5, 4), wood_top)
-img.putpixel((11, 4), wood_top)
-
-# Add side shading
-draw.line([(4, 4), (4, 12)], fill=wood_side)
-draw.line([(12, 4), (12, 12)], fill=wood_shadow)
-
-# Top edge highlight
-draw.line([(4, 3), (12, 3)], fill=(228, 188, 140, 255))
-
-# Optional: Add small "STACK" text or icon
-# Simple stacked rectangles icon (top left corner)
-for x in [5, 6]:
-    img.putpixel((x, 4), outline)
-for x in [5, 6, 7]:
-    img.putpixel((x, 5), outline)
+# Add shadow to infinity symbol
+draw.point((6, 8), fill=infinity_shadow)
+draw.point((10, 8), fill=infinity_shadow)
 
 # Save the image
 img.save('stack_box_item.png')
-print("Vanilla chest-style box texture generated: stack_box_item.png")
+print("16x16 3D box texture with infinity symbol generated!")
 print(f"Size: {size}x{size} pixels")
-print("Style: Centered, taller chest-like cardboard box")
-print("Features: Wood plank texture, central lock/clasp")
+print("Style: 3D isometric box similar to uploaded image with infinity symbol")
 print("Copy this file to: src/main/resources/assets/stackbox/textures/item/stack_box.png")

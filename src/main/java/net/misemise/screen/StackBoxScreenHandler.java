@@ -160,6 +160,10 @@ public class StackBoxScreenHandler extends ScreenHandler {
                 // Moving from storage slot - not allowed
                 return ItemStack.EMPTY;
             } else {
+                // Prevent StackBox from being shift-clicked into itself
+                if (slotStack.getItem() instanceof StackBoxItem) {
+                    return ItemStack.EMPTY;
+                }
                 // Moving from player inventory to storage
                 String itemId = Registries.ITEM.getId(slotStack.getItem()).toString();
                 int count = slotStack.getCount();

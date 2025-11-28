@@ -24,6 +24,11 @@ public class SingleItemSlot extends Slot {
             return false;
         }
 
+        // Prevent StackBox from being inserted into itself
+        if (stack.getItem() instanceof StackBoxItem) {
+            return false;
+        }
+
         // If Stack Box is empty, allow any item
         String storedItemId = StackBoxItem.getStoredItemId(stackBoxStack);
         if (storedItemId.isEmpty()) {
@@ -70,6 +75,11 @@ public class SingleItemSlot extends Slot {
     @Override
     public ItemStack insertStack(ItemStack stack, int count) {
         if (stackBoxStack.isEmpty() || stack.isEmpty()) {
+            return stack;
+        }
+
+        // Prevent StackBox from being inserted
+        if (stack.getItem() instanceof StackBoxItem) {
             return stack;
         }
 

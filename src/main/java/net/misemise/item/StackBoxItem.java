@@ -88,9 +88,18 @@ public class StackBoxItem extends Item {
         if (count > 0 || !itemId.isEmpty()) {
             nbt.putString(STORED_ITEM_KEY, itemId);
             nbt.putInt(STORED_COUNT_KEY, count);
+
+            // Update item model to match stored item
+            Identifier storedItemId = Identifier.tryParse(itemId);
+            if (storedItemId != null && Registries.ITEM.containsId(storedItemId)) {
+                stack.set(DataComponentTypes.ITEM_MODEL, storedItemId);
+            }
         } else {
             nbt.remove(STORED_ITEM_KEY);
             nbt.remove(STORED_COUNT_KEY);
+
+            // Reset to default StackBox model
+            stack.set(DataComponentTypes.ITEM_MODEL, Identifier.of("stackbox", "stack_box"));
         }
         saveNbt(stack, nbt);
     }
