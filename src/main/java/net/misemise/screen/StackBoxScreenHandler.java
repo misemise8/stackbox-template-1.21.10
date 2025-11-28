@@ -147,6 +147,10 @@ public class StackBoxScreenHandler extends ScreenHandler {
         saveStoredItem();
     }
 
+    public ItemStack getStackBoxStack() {
+        return this.stackBoxStack;
+    }
+
     @Override
     public ItemStack quickMove(PlayerEntity player, int slot) {
         ItemStack newStack = ItemStack.EMPTY;

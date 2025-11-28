@@ -7,10 +7,10 @@ img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
 draw = ImageDraw.Draw(img)
 
 # Background color (dark gray)
-bg_color = (139, 139, 139, 255)
+bg_color = (198, 198, 198, 255)
 border_dark = (55, 55, 55, 255)
 border_light = (255, 255, 255, 255)
-slot_bg = (55, 55, 55, 255)
+slot_bg = (139, 139, 139, 255)
 
 # Draw main background
 draw.rectangle([0, 0, width-1, height-1], fill=bg_color)

@@ -1,5 +1,6 @@
 package net.misemise.screen;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -11,7 +12,10 @@ import net.minecraft.registry.Registries;
 import net.minecraft.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
-import net.misemise.screen.StackBoxScreenHandler;
+import org.lwjgl.glfw.GLFW;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.misemise.network.ModMessages;
+import net.misemise.item.StackBoxItem;
 
 public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
     private static final Identifier TEXTURE = Identifier.of("stackbox", "textures/gui/stack_box.png");
@@ -19,6 +23,16 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
     private static final int TEXTURE_HEIGHT = 166;
 
     private ButtonWidget autoCollectButton;
+    private int currentTabSlotIndex = -1;
+
+    // Static variables to preserve cursor position across screen re-opens
+    private static double lastMouseX = -1;
+    private static double lastMouseY = -1;
+
+    // Static variable to track tab switches
+    public static int pendingTabSlotIndex = -1;
+
+    private boolean firstRender = true;
 
     public StackBoxScreen(StackBoxScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
@@ -26,17 +40,99 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
         this.playerInventoryTitleY = this.backgroundHeight - 94;
     }
 
-    private final List<StackBoxTab> tabs = new ArrayList<>();
+    // Custom button class for tabs
+    private class TabButtonWidget extends ButtonWidget {
+        private final ItemStack stack;
+        private final int slotIndex;
 
-    private record StackBoxTab(int slotIndex, ItemStack stack, int x, int y, int width, int height) {
+        public TabButtonWidget(int x, int y, int width, int height, int slotIndex, ItemStack stack) {
+            super(x, y, width, height, Text.empty(), button -> {
+                MinecraftClient client = MinecraftClient.getInstance();
+                if (client != null) {
+                    // Save cursor position
+                    StackBoxScreen.lastMouseX = client.mouse.getX();
+                    StackBoxScreen.lastMouseY = client.mouse.getY();
+
+                    // Set pending tab index
+                    StackBoxScreen.pendingTabSlotIndex = slotIndex;
+
+                    ClientPlayNetworking.send(new ModMessages.OpenTabPayload(slotIndex));
+                }
+            }, DEFAULT_NARRATION_SUPPLIER);
+            this.stack = stack;
+            this.slotIndex = slotIndex;
+        }
+
+        @Override
+        public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+            // Draw tab background
+            context.fill(getX(), getY(), getX() + width, getY() + height, 0xFFC6C6C6); // Light gray
+
+            // Draw borders manually
+            int borderColor = 0xFF555555;
+            context.fill(getX(), getY(), getX() + width, getY() + 1, borderColor); // Top
+            context.fill(getX(), getY(), getX() + 1, getY() + height, borderColor); // Left
+            context.fill(getX() + width - 1, getY(), getX() + width, getY() + height, borderColor); // Right
+            context.fill(getX(), getY() + height - 1, getX() + width, getY() + height, borderColor); // Bottom
+
+            // Draw item icon
+            context.drawItem(stack, getX() + 5, getY() + 6);
+
+            // Dim inactive tabs
+            if (this.slotIndex != StackBoxScreen.this.currentTabSlotIndex) {
+                // Draw a semi-transparent dark overlay on inactive tabs
+                context.fill(getX(), getY(), getX() + width, getY() + height, 0x4D000000); // 30% transparent black
+            }
+
+            // Draw tooltip if hovered
+            if (isHovered()) {
+                context.drawItemTooltip(textRenderer, stack, mouseX, mouseY);
+            }
+        }
     }
 
     @Override
     protected void init() {
         super.init();
+        this.firstRender = true;
+
+        // Detect which StackBox is currently open
+        if (this.client != null && this.client.player != null && this.handler != null) {
+            PlayerInventory inv = this.client.player.getInventory();
+            this.currentTabSlotIndex = -1;
+
+            // 1. Check pending tab switch
+            if (pendingTabSlotIndex != -1) {
+                if (pendingTabSlotIndex >= 0 && pendingTabSlotIndex < inv.size()) {
+                    ItemStack stack = inv.getStack(pendingTabSlotIndex);
+                    if (stack.getItem() instanceof StackBoxItem) {
+                        this.currentTabSlotIndex = pendingTabSlotIndex;
+                    }
+                }
+                pendingTabSlotIndex = -1; // Consume
+            }
+
+            // 2. If not found, check held items (initial open)
+            if (this.currentTabSlotIndex == -1) {
+                // Main hand
+                ItemStack mainHand = this.client.player.getMainHandStack();
+                if (mainHand.getItem() instanceof StackBoxItem) {
+                    // Find the slot index (0-8)
+                    for (int i = 0; i < 9; i++) {
+                        if (inv.getStack(i) == mainHand) {
+                            this.currentTabSlotIndex = i;
+                            break;
+                        }
+                    }
+                }
+                // Off hand
+                else if (this.client.player.getOffHandStack().getItem() instanceof StackBoxItem) {
+                    this.currentTabSlotIndex = 40; // Offhand slot index
+                }
+            }
+        }
 
         // Initialize tabs
-        this.tabs.clear();
         if (this.client != null && this.client.player != null) {
             PlayerInventory inv = this.client.player.getInventory();
             int tabX = this.x;
@@ -44,9 +140,9 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
 
             for (int i = 0; i < inv.size(); i++) {
                 ItemStack stack = inv.getStack(i);
-                if (stack.getItem() instanceof net.misemise.item.StackBoxItem) {
-                    // Create a tab for this StackBox
-                    this.tabs.add(new StackBoxTab(i, stack, tabX, tabY, 26, 28));
+                if (stack.getItem() instanceof StackBoxItem) {
+                    // Create a tab button for this StackBox
+                    this.addDrawableChild(new TabButtonWidget(tabX, tabY, 26, 28, i, stack));
                     tabX += 28; // Move to next tab position
                 }
             }
@@ -106,14 +202,16 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
                 })
                 .dimensions(toggleButtonX, toggleButtonY, buttonWidth, buttonHeight)
                 .build());
+
+        // Restore cursor position if saved - also do it here just in case render is
+        // delayed
+        if (lastMouseX != -1 && lastMouseY != -1 && this.client != null) {
+            GLFW.glfwSetCursorPos(this.client.getWindow().getHandle(), lastMouseX, lastMouseY);
+        }
     }
 
     @Override
     protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        // Draw tabs first so they appear behind the main background if needed,
-        // or after if we want them on top. Creative tabs are usually behind.
-        renderTabs(context, mouseX, mouseY);
-
         int x = (this.width - this.backgroundWidth) / 2;
         int y = (this.height - this.backgroundHeight) / 2;
 
@@ -131,60 +229,28 @@ public class StackBoxScreen extends HandledScreen<StackBoxScreenHandler> {
                 TEXTURE_HEIGHT);
     }
 
-    private void renderTabs(DrawContext context, int mouseX, int mouseY) {
-        for (StackBoxTab tab : this.tabs) {
-            // Draw tab background
-            // Using a simple colored rectangle for now, or part of the texture if we had
-            // one.
-            // Let's use a darkened rectangle for inactive tabs and lighter for active?
-            // Since we don't easily know which is active, we'll draw them all same for now.
-
-            // Draw tab background (simulated with color)
-            context.fill(tab.x, tab.y, tab.x + tab.width, tab.y + tab.height, 0xFFC6C6C6); // Light gray
-
-            // Draw borders manually
-            int borderColor = 0xFF555555;
-            context.fill(tab.x, tab.y, tab.x + tab.width, tab.y + 1, borderColor); // Top
-            context.fill(tab.x, tab.y, tab.x + 1, tab.y + tab.height, borderColor); // Left
-            context.fill(tab.x + tab.width - 1, tab.y, tab.x + tab.width, tab.y + tab.height, borderColor); // Right
-            context.fill(tab.x, tab.y + tab.height - 1, tab.x + tab.width, tab.y + tab.height, borderColor); // Bottom
-
-            // Draw item icon
-            context.drawItem(tab.stack, tab.x + 5, tab.y + 6);
-        }
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0) { // Left click
-            for (StackBoxTab tab : this.tabs) {
-                if (mouseX >= tab.x && mouseX < tab.x + tab.width &&
-                        mouseY >= tab.y && mouseY < tab.y + tab.height) {
-
-                    // Send packet to open this tab
-                    if (this.client != null) {
-                        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                                new net.misemise.network.ModMessages.OpenTabPayload(tab.slotIndex));
-                        return true;
-                    }
-                }
-            }
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Ensure cursor is restored on the very first render frame to prevent
+        // flickering
+        if (firstRender && lastMouseX != -1 && lastMouseY != -1 && this.client != null) {
+            GLFW.glfwSetCursorPos(this.client.getWindow().getHandle(), lastMouseX, lastMouseY);
+
+            // Recalculate mouseX/mouseY for this frame so tooltips appear at the correct
+            // position immediately
+            double scale = this.client.getWindow().getScaleFactor();
+            mouseX = (int) (lastMouseX / scale);
+            mouseY = (int) (lastMouseY / scale);
+
+            firstRender = false;
+            lastMouseX = -1;
+            lastMouseY = -1;
+        } else {
+            firstRender = false;
+        }
+
         this.renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
-
-        // Draw tooltips for tabs
-        for (StackBoxTab tab : this.tabs) {
-            if (mouseX >= tab.x && mouseX < tab.x + tab.width &&
-                    mouseY >= tab.y && mouseY < tab.y + tab.height) {
-                context.drawItemTooltip(this.textRenderer, tab.stack, mouseX, mouseY);
-            }
-        }
 
         // Draw Total Item count
         int count = this.handler.getStoredCount();
