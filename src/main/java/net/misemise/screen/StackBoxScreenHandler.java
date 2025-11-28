@@ -11,6 +11,7 @@ import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.misemise.item.StackBoxItem;
 
 public class StackBoxScreenHandler extends ScreenHandler {
@@ -25,6 +26,35 @@ public class StackBoxScreenHandler extends ScreenHandler {
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory) {
         this(syncId, playerInventory, ItemStack.EMPTY);
+
+        // On client, try to initialize cached values from held item to prevent UI
+        // flickering
+        if (playerInventory.player.getEntityWorld().isClient()) {
+            ItemStack found = ItemStack.EMPTY;
+            if (playerInventory.player.getMainHandStack().getItem() instanceof StackBoxItem) {
+                found = playerInventory.player.getMainHandStack();
+            } else if (playerInventory.player.getOffHandStack().getItem() instanceof StackBoxItem) {
+                found = playerInventory.player.getOffHandStack();
+            }
+
+            if (!found.isEmpty()) {
+                // Initialize Auto-Collect state (Index 2)
+                int auto = StackBoxItem.isAutoCollectEnabled(found) ? 1 : 0;
+                this.propertyDelegate.set(2, auto);
+
+                // Initialize Count (Index 0)
+                this.propertyDelegate.set(0, StackBoxItem.getStoredCount(found));
+
+                // Initialize Item ID (Index 1)
+                String itemId = StackBoxItem.getStoredItemId(found);
+                if (!itemId.isEmpty()) {
+                    Identifier id = Identifier.tryParse(itemId);
+                    if (id != null && Registries.ITEM.containsId(id)) {
+                        this.propertyDelegate.set(1, Registries.ITEM.getRawId(Registries.ITEM.get(id)));
+                    }
+                }
+            }
+        }
     }
 
     public StackBoxScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack stackBoxStack) {
